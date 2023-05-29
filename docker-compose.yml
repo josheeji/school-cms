@@ -1,0 +1,111 @@
+version: '3'
+services:
+    school-cms.php_app:
+        build:
+            context: ./docker/runtimes/8.2
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP:-1000}'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8001}:80'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+        environment:
+            WWWUSER: '${WWWUSER:-1000}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+        volumes:
+            - '.:/var/www/school-cms/'
+            - './docker/runtimes/8.2/nginx/sites-enabled:/etc/nginx/sites-enabled'
+        networks:
+            - school-cms
+        depends_on:
+            - mysql
+            #            - redis
+            #            - meilisearch
+            - mailpit
+    #            - selenium
+
+    mysql:
+        container_name: 'school_cms-mysql'
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-4401}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - ./docker/build/mysql8:/var/lib/mysql
+        networks:
+            - school-cms
+        healthcheck:
+            test:
+                - CMD
+                - mysqladmin
+                - ping
+                - '-p${DB_PASSWORD}'
+            retries: 3
+            timeout: 5s
+    #    redis:
+    #        image: 'redis:alpine'
+    #        ports:
+    #            - '${FORWARD_REDIS_PORT:-6379}:6379'
+    #        volumes:
+    #            - 'school-cms-redis:/data'
+    #        networks:
+    #            - school-cms
+    #        healthcheck:
+    #            test:
+    #                - CMD
+    #                - redis-cli
+    #                - ping
+    #            retries: 3
+    #            timeout: 5s
+    #    meilisearch:
+    #        image: 'getmeili/meilisearch:latest'
+    #        ports:
+    #            - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
+    #        volumes:
+    #            - 'school-cms-meilisearch:/meili_data'
+    #        networks:
+    #            - school-cms
+    #        healthcheck:
+    #            test:
+    #                - CMD
+    #                - wget
+    #                - '--no-verbose'
+    #                - '--spider'
+    #                - 'http://localhost:7700/health'
+    #            retries: 3
+    #            timeout: 5s
+    mailpit:
+        image: 'axllent/mailpit:latest'
+        ports:
+            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
+            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
+        networks:
+            - school-cms
+#    selenium:
+#        image: seleniarm/standalone-chromium
+#        extra_hosts:
+#            - 'host.docker.internal:host-gateway'
+#        volumes:
+#            - '/dev/shm:/dev/shm'
+#        networks:
+#            - school-cms
+networks:
+    school-cms:
+        driver: bridge
+volumes:
+    school-cms-mysql:
+        driver: local
+    school-cms-redis:
+        driver: local
+    school-cms-meilisearch:
+        driver: local

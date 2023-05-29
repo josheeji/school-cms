@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#! systemctl enable nginx
+#! systemctl start nginx
+if [ ! -z "$WWWUSER" ]; then
+    usermod -u $WWWUSER angular-developer
+fi
+
+if [ $# -gt 0 ]; then
+    exec gosu $WWWUSER "$@"
+fi
